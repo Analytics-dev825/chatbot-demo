@@ -4,10 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NHS Healthcare Costing AI Chatbot Demo</title>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -18,9 +14,11 @@
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
+        
         .animate-bounce {
             animation: bounce 1s infinite;
         }
+        
         @keyframes bounce {
             0%, 20%, 53%, 80%, 100% {
                 transform: translateY(0);
@@ -35,358 +33,346 @@
                 transform: translateY(-4px);
             }
         }
+        
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #9CA3AF;
+            border-radius: 50%;
+            display: inline-block;
+            animation: bounce 1s infinite;
+        }
+        
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+        
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.2s;
+        }
+        
+        .message-container {
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
-    <div id="root"></div>
+    <div id="chatbot-container" class="flex flex-col h-screen max-w-4xl mx-auto bg-white">
+        <!-- Header -->
+        <div class="bg-blue-600 text-white p-4 shadow-lg">
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold">NHS Healthcare Costing Assistant</h1>
+                    <p class="text-blue-100 text-sm">Specialist support for patient-level costing & analytics</p>
+                </div>
+            </div>
+        </div>
 
-    <script type="text/babel">
-        const { useState, useRef, useEffect } = React;
-        const { Send, User, Bot, Phone, Mail, CheckCircle } = lucideReact;
+        <!-- Messages Container -->
+        <div id="messages-container" class="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 message-container">
+            <!-- Initial bot message -->
+            <div class="flex justify-start">
+                <div class="flex items-start space-x-2 max-w-3xl">
+                    <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                    </div>
+                    <div class="bg-white text-gray-800 shadow-md border rounded-lg p-3">
+                        <p>Hello! I'm your NHS Healthcare Costing Assistant. I can help you with patient-level costing queries, our analytics solutions, or connect you with our specialist team. How can I assist you today?</p>
+                        <div class="flex items-center justify-between mt-2">
+                            <span class="text-xs text-gray-500" id="initial-time"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        const NHSCostingChatbot = () => {
-            const [messages, setMessages] = useState([
-                {
-                    type: 'bot',
-                    content: "Hello! I'm your NHS Healthcare Costing Assistant. I can help you with patient-level costing queries, our analytics solutions, or connect you with our specialist team. How can I assist you today?",
-                    timestamp: new Date()
-                }
-            ]);
-            const [input, setInput] = useState('');
-            const [isTyping, setIsTyping] = useState(false);
-            const [showEscalation, setShowEscalation] = useState(false);
-            const messagesEndRef = useRef(null);
+        <!-- Input Area -->
+        <div class="p-4 bg-white border-t">
+            <div class="flex space-x-2">
+                <input
+                    type="text"
+                    id="message-input"
+                    placeholder="Ask about NHS patient-level costing, analytics, or our solutions..."
+                    class="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <button
+                    id="send-button"
+                    class="bg-blue-500 text-white p-3 rounded-lg hover:bg-blue-600 transition-colors"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- Quick suggestions -->
+            <div class="flex flex-wrap gap-2 mt-3">
+                <button class="suggestion-btn text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded-full hover:bg-gray-200 transition-colors" data-suggestion="What is Patient Level Costing?">
+                    What is Patient Level Costing?
+                </button>
+                <button class="suggestion-btn text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded-full hover:bg-gray-200 transition-colors" data-suggestion="NHS compliance features">
+                    NHS compliance features
+                </button>
+                <button class="suggestion-btn text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded-full hover:bg-gray-200 transition-colors" data-suggestion="AI analytics demo">
+                    AI analytics demo
+                </button>
+                <button class="suggestion-btn text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded-full hover:bg-gray-200 transition-colors" data-suggestion="Integration options">
+                    Integration options
+                </button>
+            </div>
+        </div>
 
-            // NHS Healthcare Costing Knowledge Base
-            const knowledgeBase = {
-                'patient level costing': {
-                    keywords: ['patient level costing', 'plc', 'patient costing', 'nhs costing'],
-                    response: "Patient Level Costing (PLC) is the NHS methodology for calculating the true cost of individual patient care episodes. Our platform helps trusts implement accurate PLC by integrating clinical and financial data, enabling better resource allocation and benchmarking. Would you like to know more about our PLC implementation services or data integration capabilities?"
-                },
-                'nhs standards': {
-                    keywords: ['nhs standards', 'costing standards', 'hfma', 'reference costs'],
-                    response: "We ensure full compliance with NHS costing standards including HFMA guidelines and reference cost requirements. Our solution supports the National Cost Collection, mandatory costing standards, and integrates with existing NHS systems like SUS and PAS. Need specific information about compliance features?"
-                },
-                'analytics': {
-                    keywords: ['analytics', 'reporting', 'dashboards', 'insights', 'data analysis'],
-                    response: "Our analytics platform provides real-time cost insights, variance analysis, and predictive modeling for healthcare costs. We offer customizable dashboards, automated reporting, and AI-driven cost optimization recommendations. What specific analytics capabilities are you interested in exploring?"
-                },
-                'ai features': {
-                    keywords: ['ai', 'artificial intelligence', 'machine learning', 'predictive', 'automation'],
-                    response: "Our AI capabilities include predictive cost modeling, automated cost allocation, anomaly detection in costing data, and intelligent benchmarking. We use machine learning to identify cost-saving opportunities and improve costing accuracy. Would you like a demo of our AI-powered features?"
-                },
-                'integration': {
-                    keywords: ['integration', 'api', 'systems', 'pas', 'sus', 'epic', 'cerner'],
-                    response: "We integrate seamlessly with major NHS systems including PAS, SUS, EPR systems (Epic, Cerner, Allscripts), and finance systems. Our APIs ensure real-time data flow and maintain data integrity across your technology stack. Need technical details about specific integrations?"
-                },
-                'implementation': {
-                    keywords: ['implementation', 'setup', 'go-live', 'training', 'support'],
-                    response: "Our implementation process typically takes 8-12 weeks and includes data migration, system configuration, staff training, and go-live support. We provide dedicated project management and ongoing technical support. This sounds like something our implementation team should discuss with you directly - shall I arrange a consultation?"
-                }
-            };
+        <!-- Status bar -->
+        <div class="bg-gray-100 px-4 py-2 text-xs text-gray-600 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>AI Assistant Online</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span>Response time: &lt;2 seconds</span>
+                <span>Team available: 9AM-6PM GMT</span>
+            </div>
+        </div>
+    </div>
 
-            // Escalation triggers
-            const escalationTriggers = [
-                'pricing', 'cost', 'quote', 'contract', 'demo', 'meeting', 'call', 'speak to someone',
-                'implementation timeline', 'technical requirements', 'compliance audit', 'procurement'
-            ];
-
-            const scrollToBottom = () => {
-                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-            };
-
-            useEffect(() => {
-                scrollToBottom();
-            }, [messages]);
-
-            const findBestResponse = (userInput) => {
-                const input = userInput.toLowerCase();
-                
-                // Check for escalation triggers first
-                const needsEscalation = escalationTriggers.some(trigger => 
-                    input.includes(trigger.toLowerCase())
-                );
-                
-                if (needsEscalation) {
-                    return {
-                        response: "I can see you're interested in discussing specific requirements, pricing, or technical details. Let me connect you with one of our specialists who can provide detailed information tailored to your needs.",
-                        escalate: true
-                    };
-                }
-
-                // Search knowledge base
-                for (const [topic, data] of Object.entries(knowledgeBase)) {
-                    if (data.keywords.some(keyword => input.includes(keyword.toLowerCase()))) {
-                        return { response: data.response, escalate: false };
-                    }
-                }
-
-                // Default responses for common queries
-                if (input.includes('hello') || input.includes('hi')) {
-                    return { response: "Hello! I'm here to help with NHS patient-level costing questions. What would you like to know about our analytics platform or costing solutions?", escalate: false };
-                }
-
-                if (input.includes('help')) {
-                    return { response: "I can help you with:\n• Patient Level Costing methodology and implementation\n• NHS costing standards and compliance\n• Analytics and reporting capabilities\n• AI-powered cost optimization\n• System integrations\n• Implementation planning\n\nWhat specific area interests you most?", escalate: false };
-                }
-
-                // Generic fallback with escalation option
-                return {
-                    response: "I'd be happy to help you with that! While I have extensive knowledge about NHS patient-level costing and our analytics solutions, your specific question might benefit from one of our specialists. Would you like me to connect you with our team, or is there a particular aspect of healthcare costing I can help explain?",
-                    escalate: false,
-                    offerEscalation: true
-                };
-            };
-
-            const handleSendMessage = async () => {
-                if (!input.trim()) return;
-
-                const userMessage = {
-                    type: 'user',
-                    content: input,
-                    timestamp: new Date()
-                };
-
-                setMessages(prev => [...prev, userMessage]);
-                setInput('');
-                setIsTyping(true);
-
-                // Simulate AI processing delay
-                setTimeout(() => {
-                    const aiResponse = findBestResponse(input);
-                    
-                    const botMessage = {
-                        type: 'bot',
-                        content: aiResponse.response,
-                        timestamp: new Date(),
-                        escalate: aiResponse.escalate,
-                        offerEscalation: aiResponse.offerEscalation
-                    };
-
-                    setMessages(prev => [...prev, botMessage]);
-                    setIsTyping(false);
-
-                    if (aiResponse.escalate) {
-                        setShowEscalation(true);
-                    }
-                }, 1000 + Math.random() * 1000);
-            };
-
-            const handleEscalation = (method) => {
-                const escalationMessage = {
-                    type: 'bot',
-                    content: method === 'call' 
-                        ? "Perfect! I'll have one of our NHS costing specialists call you within the next business hour. Please ensure your contact details are up to date. In the meantime, feel free to ask me any other questions!"
-                        : "Great! I'll send your inquiry to our team and you'll receive a detailed response via email within 2 hours. Our specialists will include relevant case studies and technical documentation. Anything else I can help with right now?",
-                    timestamp: new Date(),
-                    escalationConfirmed: true
-                };
-                
-                setMessages(prev => [...prev, escalationMessage]);
-                setShowEscalation(false);
-            };
-
-            return React.createElement('div', {
-                className: "flex flex-col h-screen max-w-4xl mx-auto bg-white"
-            }, [
-                // Header
-                React.createElement('div', {
-                    key: 'header',
-                    className: "bg-blue-600 text-white p-4 shadow-lg"
-                }, 
-                    React.createElement('div', {
-                        className: "flex items-center space-x-3"
-                    }, [
-                        React.createElement(Bot, { key: 'bot-icon', className: "w-8 h-8" }),
-                        React.createElement('div', { key: 'header-text' }, [
-                            React.createElement('h1', { key: 'title', className: "text-xl font-bold" }, "NHS Healthcare Costing Assistant"),
-                            React.createElement('p', { key: 'subtitle', className: "text-blue-100 text-sm" }, "Specialist support for patient-level costing & analytics")
-                        ])
-                    ])
-                ),
-
-                // Messages
-                React.createElement('div', {
-                    key: 'messages',
-                    className: "flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50"
-                }, [
-                    ...messages.map((message, index) =>
-                        React.createElement('div', {
-                            key: index,
-                            className: `flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`
-                        },
-                            React.createElement('div', {
-                                className: `flex items-start space-x-2 max-w-3xl ${message.type === 'user' ? 'flex-row-reverse space-x-reverse' : ''}`
-                            }, [
-                                React.createElement('div', {
-                                    key: 'avatar',
-                                    className: `w-8 h-8 rounded-full flex items-center justify-center ${
-                                        message.type === 'user' ? 'bg-blue-500' : 'bg-green-500'
-                                    }`
-                                },
-                                    message.type === 'user' 
-                                        ? React.createElement(User, { className: "w-4 h-4 text-white" })
-                                        : React.createElement(Bot, { className: "w-4 h-4 text-white" })
-                                ),
-                                React.createElement('div', {
-                                    key: 'message-content',
-                                    className: `rounded-lg p-3 ${
-                                        message.type === 'user' 
-                                            ? 'bg-blue-500 text-white' 
-                                            : 'bg-white text-gray-800 shadow-md border'
-                                    }`
-                                }, [
-                                    React.createElement('p', { key: 'text', className: "whitespace-pre-wrap" }, message.content),
-                                    React.createElement('div', {
-                                        key: 'message-footer',
-                                        className: "flex items-center justify-between mt-2"
-                                    }, [
-                                        React.createElement('span', {
-                                            key: 'timestamp',
-                                            className: `text-xs ${message.type === 'user' ? 'text-blue-100' : 'text-gray-500'}`
-                                        }, message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })),
-                                        message.escalationConfirmed && React.createElement(CheckCircle, {
-                                            key: 'check',
-                                            className: "w-4 h-4 text-green-500"
-                                        })
-                                    ]),
-                                    
-                                    // Escalation buttons
-                                    (message.escalate || message.offerEscalation) && !showEscalation && !message.escalationConfirmed &&
-                                    React.createElement('div', {
-                                        key: 'escalation',
-                                        className: "mt-3 pt-3 border-t border-gray-200"
-                                    }, [
-                                        React.createElement('p', {
-                                            key: 'escalation-text',
-                                            className: "text-sm text-gray-600 mb-2"
-                                        }, "How would you prefer to connect with our team?"),
-                                        React.createElement('div', {
-                                            key: 'escalation-buttons',
-                                            className: "flex space-x-2"
-                                        }, [
-                                            React.createElement('button', {
-                                                key: 'call-btn',
-                                                onClick: () => handleEscalation('call'),
-                                                className: "flex items-center space-x-1 bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 transition-colors"
-                                            }, [
-                                                React.createElement(Phone, { key: 'phone-icon', className: "w-3 h-3" }),
-                                                React.createElement('span', { key: 'call-text' }, "Schedule Call")
-                                            ]),
-                                            React.createElement('button', {
-                                                key: 'email-btn',
-                                                onClick: () => handleEscalation('email'),
-                                                className: "flex items-center space-x-1 bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600 transition-colors"
-                                            }, [
-                                                React.createElement(Mail, { key: 'mail-icon', className: "w-3 h-3" }),
-                                                React.createElement('span', { key: 'email-text' }, "Email Response")
-                                            ])
-                                        ])
-                                    ])
-                                ])
-                            ])
-                        )
-                    ),
-                    
-                    // Typing indicator
-                    isTyping && React.createElement('div', {
-                        key: 'typing',
-                        className: "flex justify-start"
-                    },
-                        React.createElement('div', {
-                            className: "flex items-start space-x-2"
-                        }, [
-                            React.createElement('div', {
-                                key: 'typing-avatar',
-                                className: "w-8 h-8 rounded-full bg-green-500 flex items-center justify-center"
-                            },
-                                React.createElement(Bot, { className: "w-4 h-4 text-white" })
-                            ),
-                            React.createElement('div', {
-                                key: 'typing-bubble',
-                                className: "bg-white rounded-lg p-3 shadow-md border"
-                            },
-                                React.createElement('div', {
-                                    className: "flex space-x-1"
-                                }, [
-                                    React.createElement('div', { key: 'dot1', className: "w-2 h-2 bg-gray-400 rounded-full animate-bounce" }),
-                                    React.createElement('div', { key: 'dot2', className: "w-2 h-2 bg-gray-400 rounded-full animate-bounce", style: { animationDelay: '0.1s' } }),
-                                    React.createElement('div', { key: 'dot3', className: "w-2 h-2 bg-gray-400 rounded-full animate-bounce", style: { animationDelay: '0.2s' } })
-                                ])
-                            )
-                        ])
-                    ),
-                    React.createElement('div', { key: 'scroll-anchor', ref: messagesEndRef })
-                ]),
-
-                // Input
-                React.createElement('div', {
-                    key: 'input-area',
-                    className: "p-4 bg-white border-t"
-                }, [
-                    React.createElement('div', {
-                        key: 'input-container',
-                        className: "flex space-x-2"
-                    }, [
-                        React.createElement('input', {
-                            key: 'input',
-                            type: "text",
-                            value: input,
-                            onChange: (e) => setInput(e.target.value),
-                            onKeyPress: (e) => e.key === 'Enter' && handleSendMessage(),
-                            placeholder: "Ask about NHS patient-level costing, analytics, or our solutions...",
-                            className: "flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500",
-                            disabled: isTyping
-                        }),
-                        React.createElement('button', {
-                            key: 'send-btn',
-                            onClick: handleSendMessage,
-                            disabled: isTyping || !input.trim(),
-                            className: "bg-blue-500 text-white p-3 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        },
-                            React.createElement(Send, { className: "w-5 h-5" })
-                        )
-                    ]),
-                    
-                    // Quick suggestions
-                    React.createElement('div', {
-                        key: 'suggestions',
-                        className: "flex flex-wrap gap-2 mt-3"
-                    },
-                        ['What is Patient Level Costing?', 'NHS compliance features', 'AI analytics demo', 'Integration options'].map((suggestion, index) =>
-                            React.createElement('button', {
-                                key: index,
-                                onClick: () => setInput(suggestion),
-                                className: "text-sm bg-gray-100 text-gray-700 px-3 py-1 rounded-full hover:bg-gray-200 transition-colors"
-                            }, suggestion)
-                        )
-                    )
-                ]),
-
-                // Status bar
-                React.createElement('div', {
-                    key: 'status',
-                    className: "bg-gray-100 px-4 py-2 text-xs text-gray-600 flex items-center justify-between"
-                }, [
-                    React.createElement('div', {
-                        key: 'status-left',
-                        className: "flex items-center space-x-2"
-                    }, [
-                        React.createElement('div', { key: 'status-dot', className: "w-2 h-2 bg-green-500 rounded-full" }),
-                        React.createElement('span', { key: 'status-text' }, "AI Assistant Online")
-                    ]),
-                    React.createElement('div', {
-                        key: 'status-right',
-                        className: "flex items-center space-x-4"
-                    }, [
-                        React.createElement('span', { key: 'response-time' }, "Response time: <2 seconds"),
-                        React.createElement('span', { key: 'team-hours' }, "Team available: 9AM-6PM GMT")
-                    ])
-                ])
-            ]);
+    <script>
+        // NHS Healthcare Costing Knowledge Base
+        const knowledgeBase = {
+            'patient level costing': {
+                keywords: ['patient level costing', 'plc', 'patient costing', 'nhs costing'],
+                response: "Patient Level Costing (PLC) is the NHS methodology for calculating the true cost of individual patient care episodes. Our platform helps trusts implement accurate PLC by integrating clinical and financial data, enabling better resource allocation and benchmarking. Would you like to know more about our PLC implementation services or data integration capabilities?"
+            },
+            'nhs standards': {
+                keywords: ['nhs standards', 'costing standards', 'hfma', 'reference costs'],
+                response: "We ensure full compliance with NHS costing standards including HFMA guidelines and reference cost requirements. Our solution supports the National Cost Collection, mandatory costing standards, and integrates with existing NHS systems like SUS and PAS. Need specific information about compliance features?"
+            },
+            'analytics': {
+                keywords: ['analytics', 'reporting', 'dashboards', 'insights', 'data analysis'],
+                response: "Our analytics platform provides real-time cost insights, variance analysis, and predictive modeling for healthcare costs. We offer customizable dashboards, automated reporting, and AI-driven cost optimization recommendations. What specific analytics capabilities are you interested in exploring?"
+            },
+            'ai features': {
+                keywords: ['ai', 'artificial intelligence', 'machine learning', 'predictive', 'automation'],
+                response: "Our AI capabilities include predictive cost modeling, automated cost allocation, anomaly detection in costing data, and intelligent benchmarking. We use machine learning to identify cost-saving opportunities and improve costing accuracy. Would you like a demo of our AI-powered features?"
+            },
+            'integration': {
+                keywords: ['integration', 'api', 'systems', 'pas', 'sus', 'epic', 'cerner'],
+                response: "We integrate seamlessly with major NHS systems including PAS, SUS, EPR systems (Epic, Cerner, Allscripts), and finance systems. Our APIs ensure real-time data flow and maintain data integrity across your technology stack. Need technical details about specific integrations?"
+            },
+            'implementation': {
+                keywords: ['implementation', 'setup', 'go-live', 'training', 'support'],
+                response: "Our implementation process typically takes 8-12 weeks and includes data migration, system configuration, staff training, and go-live support. We provide dedicated project management and ongoing technical support. This sounds like something our implementation team should discuss with you directly - shall I arrange a consultation?"
+            }
         };
 
-        ReactDOM.render(React.createElement(NHSCostingChatbot), document.getElementById('root'));
+        // Escalation triggers
+        const escalationTriggers = [
+            'pricing', 'cost', 'quote', 'contract', 'demo', 'meeting', 'call', 'speak to someone',
+            'implementation timeline', 'technical requirements', 'compliance audit', 'procurement'
+        ];
+
+        // Initialize timestamp
+        document.getElementById('initial-time').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        function findBestResponse(userInput) {
+            const input = userInput.toLowerCase();
+            
+            // Check for escalation triggers first
+            const needsEscalation = escalationTriggers.some(trigger => 
+                input.includes(trigger.toLowerCase())
+            );
+            
+            if (needsEscalation) {
+                return {
+                    response: "I can see you're interested in discussing specific requirements, pricing, or technical details. Let me connect you with one of our specialists who can provide detailed information tailored to your needs.",
+                    escalate: true
+                };
+            }
+
+            // Search knowledge base
+            for (const [topic, data] of Object.entries(knowledgeBase)) {
+                if (data.keywords.some(keyword => input.includes(keyword.toLowerCase()))) {
+                    return { response: data.response, escalate: false };
+                }
+            }
+
+            // Default responses for common queries
+            if (input.includes('hello') || input.includes('hi')) {
+                return { response: "Hello! I'm here to help with NHS patient-level costing questions. What would you like to know about our analytics platform or costing solutions?", escalate: false };
+            }
+
+            if (input.includes('help')) {
+                return { response: "I can help you with:\n• Patient Level Costing methodology and implementation\n• NHS costing standards and compliance\n• Analytics and reporting capabilities\n• AI-powered cost optimization\n• System integrations\n• Implementation planning\n\nWhat specific area interests you most?", escalate: false };
+            }
+
+            // Generic fallback with escalation option
+            return {
+                response: "I'd be happy to help you with that! While I have extensive knowledge about NHS patient-level costing and our analytics solutions, your specific question might benefit from one of our specialists. Would you like me to connect you with our team, or is there a particular aspect of healthcare costing I can help explain?",
+                escalate: false,
+                offerEscalation: true
+            };
+        }
+
+        function addMessage(content, isUser = false, options = {}) {
+            const messagesContainer = document.getElementById('messages-container');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex ${isUser ? 'justify-end' : 'justify-start'} fade-in`;
+            
+            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            let escalationButtons = '';
+            if (options.escalate || options.offerEscalation) {
+                escalationButtons = `
+                    <div class="mt-3 pt-3 border-t border-gray-200">
+                        <p class="text-sm text-gray-600 mb-2">How would you prefer to connect with our team?</p>
+                        <div class="flex space-x-2">
+                            <button onclick="handleEscalation('call')" class="flex items-center space-x-1 bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 transition-colors">
+                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+                                </svg>
+                                <span>Schedule Call</span>
+                            </button>
+                            <button onclick="handleEscalation('email')" class="flex items-center space-x-1 bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600 transition-colors">
+                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                                </svg>
+                                <span>Email Response</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            messageDiv.innerHTML = `
+                <div class="flex items-start space-x-2 max-w-3xl ${isUser ? 'flex-row-reverse space-x-reverse' : ''}">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center ${isUser ? 'bg-blue-500' : 'bg-green-500'}">
+                        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            ${isUser 
+                                ? '<path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>'
+                                : '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>'
+                            }
+                        </svg>
+                    </div>
+                    <div class="rounded-lg p-3 ${isUser ? 'bg-blue-500 text-white' : 'bg-white text-gray-800 shadow-md border'}">
+                        <p class="whitespace-pre-wrap">${content}</p>
+                        <div class="flex items-center justify-between mt-2">
+                            <span class="text-xs ${isUser ? 'text-blue-100' : 'text-gray-500'}">${timestamp}</span>
+                        </div>
+                        ${escalationButtons}
+                    </div>
+                </div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            const messagesContainer = document.getElementById('messages-container');
+            const typingDiv = document.createElement('div');
+            typingDiv.id = 'typing-indicator';
+            typingDiv.className = 'flex justify-start';
+            typingDiv.innerHTML = `
+                <div class="flex items-start space-x-2">
+                    <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                    </div>
+                    <div class="bg-white rounded-lg p-3 shadow-md border">
+                        <div class="flex space-x-1">
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                            <div class="typing-dot"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            messagesContainer.appendChild(typingDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const typingIndicator = document.getElementById('typing-indicator');
+            if (typingIndicator) {
+                typingIndicator.remove();
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const sendButton = document.getElementById('send-button');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // Add user message
+            addMessage(message, true);
+            
+            // Clear input and disable
+            input.value = '';
+            input.disabled = true;
+            sendButton.disabled = true;
+            
+            // Show typing indicator
+            showTypingIndicator();
+            
+            // Simulate AI response delay
+            setTimeout(() => {
+                hideTypingIndicator();
+                
+                const aiResponse = findBestResponse(message);
+                addMessage(aiResponse.response, false, aiResponse);
+                
+                // Re-enable input
+                input.disabled = false;
+                sendButton.disabled = false;
+                input.focus();
+            }, 1000 + Math.random() * 1000);
+        }
+
+        function handleEscalation(method) {
+            const escalationMessage = method === 'call' 
+                ? "Perfect! I'll have one of our NHS costing specialists call you within the next business hour. Please ensure your contact details are up to date. In the meantime, feel free to ask me any other questions!"
+                : "Great! I'll send your inquiry to our team and you'll receive a detailed response via email within 2 hours. Our specialists will include relevant case studies and technical documentation. Anything else I can help with right now?";
+            
+            addMessage(escalationMessage, false, { escalationConfirmed: true });
+        }
+
+        // Event listeners
+        document.getElementById('send-button').addEventListener('click', sendMessage);
+        document.getElementById('message-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Suggestion buttons
+        document.querySelectorAll('.suggestion-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.getElementById('message-input').value = this.dataset.suggestion;
+                sendMessage();
+            });
+        });
+
+        // Focus on input when page loads
+        document.getElementById('message-input').focus();
     </script>
 </body>
 </html>
